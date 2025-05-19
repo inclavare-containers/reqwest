@@ -104,6 +104,8 @@ struct Config {
     pool_idle_timeout: Option<Duration>,
     pool_max_idle_per_host: usize,
     tcp_keepalive: Option<Duration>,
+    tcp_keepalive_interval: Option<Duration>,
+    tcp_keepalive_retries: Option<u32>,
     #[cfg(any(feature = "native-tls", feature = "__rustls"))]
     identity: Option<Identity>,
     proxies: Vec<Proxy>,
@@ -207,6 +209,8 @@ impl ClientBuilder {
                 // TODO: Re-enable default duration once hyper's HttpConnector is fixed
                 // to no longer error when an option fails.
                 tcp_keepalive: None, //Some(Duration::from_secs(60)),
+                tcp_keepalive_interval: None,
+                tcp_keepalive_retries: None,
                 proxies: Vec::new(),
                 auto_sys_proxy: true,
                 redirect_policy: redirect::Policy::default(),
@@ -743,6 +747,9 @@ impl ClientBuilder {
 
         connector.set_timeout(config.connect_timeout);
         connector.set_verbose(config.connection_verbose);
+        connector.set_keepalive(config.tcp_keepalive);
+        connector.set_keepalive_interval(config.tcp_keepalive_interval);
+        connector.set_keepalive_retries(config.tcp_keepalive_retries);
 
         let mut builder =
             hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new());
@@ -782,7 +789,6 @@ impl ClientBuilder {
         builder.pool_timer(hyper_util::rt::TokioTimer::new());
         builder.pool_idle_timeout(config.pool_idle_timeout);
         builder.pool_max_idle_per_host(config.pool_max_idle_per_host);
-        connector.set_keepalive(config.tcp_keepalive);
 
         if config.http09_responses {
             builder.http09_responses(true);
@@ -1439,6 +1445,28 @@ impl ClientBuilder {
         D: Into<Option<Duration>>,
     {
         self.config.tcp_keepalive = val.into();
+        self
+    }
+
+    /// Set that all sockets have `SO_KEEPALIVE` set with the supplied interval.
+    ///
+    /// If `None`, the option will not be set.
+    pub fn tcp_keepalive_interval<D>(mut self, val: D) -> ClientBuilder
+    where
+        D: Into<Option<Duration>>,
+    {
+        self.config.tcp_keepalive_interval = val.into();
+        self
+    }
+
+    /// Set that all sockets have `SO_KEEPALIVE` set with the supplied retry count.
+    ///
+    /// If `None`, the option will not be set.
+    pub fn tcp_keepalive_retries<C>(mut self, retries: C) -> ClientBuilder
+    where
+        C: Into<Option<u32>>,
+    {
+        self.config.tcp_keepalive_retries = retries.into();
         self
     }
 

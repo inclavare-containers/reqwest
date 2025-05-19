@@ -470,7 +470,7 @@ impl Connector {
         self.connect_with_maybe_proxy(proxy_dst, true).await
     }
 
-    pub fn set_keepalive(&mut self, dur: Option<Duration>) {
+    pub(crate) fn set_keepalive(&mut self, dur: Option<Duration>) {
         match &mut self.inner {
             #[cfg(feature = "default-tls")]
             Inner::DefaultTls(http, _tls) => http.set_keepalive(dur),
@@ -478,6 +478,28 @@ impl Connector {
             Inner::RustlsTls { http, .. } => http.set_keepalive(dur),
             #[cfg(not(feature = "__tls"))]
             Inner::Http(http) => http.set_keepalive(dur),
+        }
+    }
+
+    pub(crate) fn set_keepalive_interval(&mut self, dur: Option<Duration>) {
+        match &mut self.inner {
+            #[cfg(feature = "default-tls")]
+            Inner::DefaultTls(http, _tls) => http.set_keepalive_interval(dur),
+            #[cfg(feature = "__rustls")]
+            Inner::RustlsTls { http, .. } => http.set_keepalive_interval(dur),
+            #[cfg(not(feature = "__tls"))]
+            Inner::Http(http) => http.set_keepalive_interval(dur),
+        }
+    }
+
+    pub(crate) fn set_keepalive_retries(&mut self, retries: Option<u32>) {
+        match &mut self.inner {
+            #[cfg(feature = "default-tls")]
+            Inner::DefaultTls(http, _tls) => http.set_keepalive_retries(retries),
+            #[cfg(feature = "__rustls")]
+            Inner::RustlsTls { http, .. } => http.set_keepalive_retries(retries),
+            #[cfg(not(feature = "__tls"))]
+            Inner::Http(http) => http.set_keepalive_retries(retries),
         }
     }
 }
