@@ -18,6 +18,7 @@ pub struct Request {
     url: Url,
     headers: HeaderMap,
     body: Option<Body>,
+    duplex: Option<String>,
     pub(super) cors: bool,
     pub(super) credentials: Option<RequestCredentials>,
 }
@@ -37,6 +38,7 @@ impl Request {
             url,
             headers: HeaderMap::new(),
             body: None,
+            duplex: None,
             cors: true,
             credentials: None,
         }
@@ -90,6 +92,18 @@ impl Request {
         &mut self.body
     }
 
+    /// Get the duplex
+    #[inline]
+    pub fn duplex(&mut self) -> Option<&String> {
+        self.duplex.as_ref()
+    }
+
+    /// Get a mutable reference to duplex
+    #[inline]
+    pub fn duplex_mut(&mut self) -> &mut Option<String> {
+        &mut self.duplex
+    }
+
     /// Attempts to clone the `Request`.
     ///
     /// None is returned if a body is which can not be cloned.
@@ -104,6 +118,7 @@ impl Request {
             url: self.url.clone(),
             headers: self.headers.clone(),
             body,
+            duplex: self.duplex.clone(),
             cors: self.cors,
             credentials: self.credentials,
         })
@@ -351,6 +366,22 @@ impl RequestBuilder {
         self
     }
 
+    /// Set duplex mode
+    ///
+    /// # WASM
+    ///
+    /// This option is only effective with WebAssembly target.
+    ///
+    /// In some browsers, the `duplex` member must be specified for a request with a streaming body.
+    ///
+    /// [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
+    pub fn duplex(mut self, mode: &str) -> RequestBuilder {
+        if let Ok(ref mut req) = self.request {
+            req.duplex = Some(mode.into());
+        }
+        self
+    }
+
     /// Build a `Request`, which can be inspected, modified and executed with
     /// `Client::execute()`.
     pub fn build(self) -> crate::Result<Request> {
@@ -466,6 +497,7 @@ where
             url,
             headers,
             body: Some(body.into()),
+            duplex: None,
             cors: true,
             credentials: None,
         })
