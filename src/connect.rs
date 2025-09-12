@@ -66,6 +66,9 @@ impl Connector {
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         interface: Option<&str>,
         nodelay: bool,
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        #[rustfmt::skip]
+        mark: Option<u32>,
     ) -> Connector
     where
         T: Into<Option<IpAddr>>,
@@ -76,6 +79,8 @@ impl Connector {
             http.set_interface(interface.to_owned());
         }
         http.set_nodelay(nodelay);
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        http.set_mark(mark);
 
         Connector {
             inner: Inner::Http(http),
@@ -95,6 +100,9 @@ impl Connector {
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         interface: Option<&str>,
         nodelay: bool,
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        #[rustfmt::skip]
+        mark: Option<u32>,
         tls_info: bool,
     ) -> crate::Result<Connector>
     where
@@ -110,6 +118,8 @@ impl Connector {
             #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
             interface,
             nodelay,
+            #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+            mark,
             tls_info,
         ))
     }
@@ -124,6 +134,9 @@ impl Connector {
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         interface: Option<&str>,
         nodelay: bool,
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        #[rustfmt::skip]
+        mark: Option<u32>,
         tls_info: bool,
     ) -> Connector
     where
@@ -135,6 +148,8 @@ impl Connector {
             http.set_interface(interface);
         }
         http.set_nodelay(nodelay);
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        http.set_mark(mark);
         http.enforce_http(false);
 
         Connector {
@@ -158,6 +173,9 @@ impl Connector {
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         interface: Option<&str>,
         nodelay: bool,
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        #[rustfmt::skip]
+        mark: Option<u32>,
         tls_info: bool,
     ) -> Connector
     where
@@ -169,6 +187,8 @@ impl Connector {
             http.set_interface(interface.to_owned());
         }
         http.set_nodelay(nodelay);
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        http.set_mark(mark);
         http.enforce_http(false);
 
         let (tls, tls_proxy) = if proxies.is_empty() {

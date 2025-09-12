@@ -154,6 +154,8 @@ struct Config {
     #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
     interface: Option<String>,
     nodelay: bool,
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    mark: Option<u32>,
     #[cfg(feature = "cookies")]
     cookie_store: Option<Arc<dyn cookie::CookieStore>>,
     hickory_dns: bool,
@@ -255,6 +257,8 @@ impl ClientBuilder {
                 #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
                 interface: None,
                 nodelay: true,
+                #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+                mark: None,
                 hickory_dns: cfg!(feature = "hickory-dns"),
                 #[cfg(feature = "cookies")]
                 cookie_store: None,
@@ -454,6 +458,12 @@ impl ClientBuilder {
                         ))]
                         config.interface.as_deref(),
                         config.nodelay,
+                        #[cfg(any(
+                            target_os = "android",
+                            target_os = "fuchsia",
+                            target_os = "linux"
+                        ))]
+                        config.mark,
                         config.tls_info,
                     )?
                 }
@@ -467,6 +477,8 @@ impl ClientBuilder {
                     #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
                     config.interface.as_deref(),
                     config.nodelay,
+                    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+                    config.mark,
                     config.tls_info,
                 ),
                 #[cfg(feature = "__rustls")]
@@ -498,6 +510,12 @@ impl ClientBuilder {
                         ))]
                         config.interface.as_deref(),
                         config.nodelay,
+                        #[cfg(any(
+                            target_os = "android",
+                            target_os = "fuchsia",
+                            target_os = "linux"
+                        ))]
+                        config.mark,
                         config.tls_info,
                     )
                 }
@@ -693,6 +711,12 @@ impl ClientBuilder {
                         ))]
                         config.interface.as_deref(),
                         config.nodelay,
+                        #[cfg(any(
+                            target_os = "android",
+                            target_os = "fuchsia",
+                            target_os = "linux"
+                        ))]
+                        config.mark,
                         config.tls_info,
                     )
                 }
@@ -712,6 +736,8 @@ impl ClientBuilder {
                 #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
                 config.interface.as_deref(),
                 config.nodelay,
+                #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+                config.mark,
             )
         };
 
@@ -1354,6 +1380,15 @@ impl ClientBuilder {
     /// Default is `true`.
     pub fn tcp_nodelay(mut self, enabled: bool) -> ClientBuilder {
         self.config.nodelay = enabled;
+        self
+    }
+
+    /// Set that all sockets have `SO_MARK` set to specific value.
+    ///
+    /// Default is `None`
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    pub fn tcp_mark(mut self, so_mark: Option<u32>) -> ClientBuilder {
+        self.config.mark = so_mark;
         self
     }
 

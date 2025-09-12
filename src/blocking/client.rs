@@ -519,6 +519,14 @@ impl ClientBuilder {
         self.with_inner(move |inner| inner.tcp_nodelay(enabled))
     }
 
+    /// Set that all sockets have `SO_MARK` set to specific value.
+    ///
+    /// Default is `None`
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    pub fn tcp_mark(self, so_mark: Option<u32>) -> ClientBuilder {
+        self.with_inner(move |inner| inner.tcp_mark(so_mark))
+    }
+
     /// Bind to a local IP Address.
     ///
     /// # Example
