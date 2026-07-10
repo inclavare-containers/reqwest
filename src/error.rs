@@ -276,8 +276,75 @@ pub(crate) fn url_invalid_uri(url: Url) -> Error {
 }
 
 if_wasm! {
+    /// Render a JS rejection (`JsValue`) as a clean error string.
+    ///
+    /// wasm-bindgen's default `Debug` for a `JsValue` holding a JS `Error`
+    /// renders both `Error.toString()` and `Error.stack`; since both start with
+    /// `<name>: <message>`, the message is duplicated and the whole thing is
+    /// wrapped in a raw `JsValue(...)`. Render `<name>: <message>` once and the
+    /// `.stack` once instead.
+    ///
+    /// For a browser `fetch()` failure the platform reports an opaque
+    /// `TypeError: Failed to fetch` and deliberately does not expose the
+    /// underlying reason (DNS, TLS, CORS, mixed-content). Append a hint so the
+    /// user knows where to look. Skip the hint for other rejections (e.g.
+    /// `AbortError`) so it is not misleading.
     pub(crate) fn wasm(js_val: wasm_bindgen::JsValue) -> BoxError {
+        use wasm_bindgen::JsCast;
+
+        if let Some(err) = js_val.dyn_ref::<js_sys::Error>() {
+            let name = err.name().as_string().unwrap_or_default();
+            let message = err.message().as_string().unwrap_or_default();
+            // `name`/`message` are borrowed again below by `is_browser_fetch_failure`,
+            // so the single-field arms clone (never move) and the empty case falls back
+            // to a literal. `format!` only borrows, so the `(false, false)` arm is safe.
+            let head = match (name.is_empty(), message.is_empty()) {
+                (false, false) => format!("{name}: {message}"),
+                (false, true) => name.clone(),
+                (true, false) => message.clone(),
+                _ => "Error".to_string(),
+            };
+
+            // V8 (Chrome/Edge) prefixes `Error.stack` with "<name>: <message>", so
+            // appending the raw stack would print that line twice (once as `head`,
+            // once as the stack's first line). SpiderMonkey (Firefox) does not.
+            // When the stack already begins with `head`, use it verbatim (head +
+            // frames, printed once); otherwise prepend `head`.
+            let stack = js_sys::Reflect::get(&js_val, &wasm_bindgen::JsValue::from_str("stack"))
+                .ok()
+                .and_then(|v| v.as_string())
+                .filter(|s| !s.is_empty());
+
+            let mut out = match stack {
+                Some(stack) if stack.starts_with(head.as_str()) => stack,
+                Some(stack) => {
+                    let mut s = head.clone();
+                    s.push('\n');
+                    s.push_str(&stack);
+                    s
+                }
+                None => head.clone(),
+            };
+
+            if is_browser_fetch_failure(&name, &message) {
+                out.push('\n');
+                out.push_str(
+                    "Note: browsers do not expose the underlying reason for a fetch failure. \
+                     Common causes: server unreachable, mixed-content \
+                     (https page -> http url), CORS rejection, or TLS/certificate error.",
+                );
+            }
+
+            return out.into();
+        }
+
+        // Non-`Error` rejection (e.g. a string thrown from JS): no duplication
+        // concern, fall back to the raw Debug.
         format!("{js_val:?}").into()
+    }
+
+    fn is_browser_fetch_failure(name: &str, message: &str) -> bool {
+        (name == "TypeError" || name == "Error") && message.contains("Failed to fetch")
     }
 }
 
