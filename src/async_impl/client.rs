@@ -240,6 +240,8 @@ struct Config {
     ))]
     interface: Option<String>,
     nodelay: bool,
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    mark: Option<u32>,
     #[cfg(feature = "cookies")]
     cookie_store: Option<Arc<dyn cookie::CookieStore>>,
     hickory_dns: bool,
@@ -368,6 +370,8 @@ impl ClientBuilder {
                 ))]
                 interface: None,
                 nodelay: true,
+                #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+                mark: None,
                 hickory_dns: cfg!(feature = "hickory-dns"),
                 #[cfg(feature = "cookies")]
                 cookie_store: None,
@@ -926,6 +930,8 @@ impl ClientBuilder {
         connector_builder.set_keepalive_retries(config.tcp_keepalive_retries);
         #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
         connector_builder.set_tcp_user_timeout(config.tcp_user_timeout);
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        connector_builder.set_mark(config.mark);
 
         #[cfg(feature = "socks")]
         connector_builder.set_socks_resolver(resolver);
@@ -1690,6 +1696,22 @@ impl ClientBuilder {
     /// Default is `true`.
     pub fn tcp_nodelay(mut self, enabled: bool) -> ClientBuilder {
         self.config.nodelay = enabled;
+        self
+    }
+
+    /// Set that all sockets have `SO_MARK` set to specific value.
+    ///
+    /// This option is only available on Linux, Android, and Fuchsia. The mark
+    /// can be matched by policy routing rules and packet filters, which is
+    /// useful for TPROXY-based egress.
+    ///
+    /// Setting the mark requires the binary to either have `CAP_NET_ADMIN` or
+    /// to be run as root.
+    ///
+    /// Default is `None`.
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    pub fn tcp_mark(mut self, so_mark: Option<u32>) -> ClientBuilder {
+        self.config.mark = so_mark;
         self
     }
 
@@ -2874,6 +2896,11 @@ impl Config {
 
         if self.nodelay {
             f.field("tcp_nodelay", &true);
+        }
+
+        #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+        if let Some(ref v) = self.mark {
+            f.field("tcp_mark", v);
         }
 
         #[cfg(feature = "__tls")]

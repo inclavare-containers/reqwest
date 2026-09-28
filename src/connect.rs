@@ -468,6 +468,18 @@ where {
         }
     }
 
+    #[cfg(any(target_os = "android", target_os = "fuchsia", target_os = "linux"))]
+    pub(crate) fn set_mark(&mut self, mark: Option<u32>) {
+        match &mut self.inner {
+            #[cfg(feature = "__native-tls")]
+            Inner::NativeTls(http, _tls) => http.set_mark(mark),
+            #[cfg(feature = "__rustls")]
+            Inner::RustlsTls { http, .. } => http.set_mark(mark),
+            #[cfg(not(feature = "__tls"))]
+            Inner::Http(http) => http.set_mark(mark),
+        }
+    }
+
     #[cfg(unix)]
     pub(crate) fn set_unix_socket(&mut self, path: Option<Arc<std::path::Path>>) {
         self.unix_socket = path;
